@@ -3,12 +3,12 @@ var router = express.Router();
 var projectService = require('../services/projectService');
 
 router.post('/crear', async (req, res) => {
-    const {nombreProyecto} = req.body;
-    if (!nombreProyecto) {
-        res.status(400).json({error: 'El nombre del proyecto es requerido'});
+    const {nombreProyecto, graphModel} = req.body;
+    if (!nombreProyecto, !graphModel) {
+        res.status(400).json({error: 'El nombre del proyecto es requerido y/o el modelo de grafos es requerido'});
     }
     try{
-        await projectService.createProject(nombreProyecto);
+        await projectService.createProject(nombreProyecto, graphModel);
         res.json({message: 'Proyecto creado correctamente'});
     } catch (error) {
         res.status(500).json({error: error.message});
