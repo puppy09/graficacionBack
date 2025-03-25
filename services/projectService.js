@@ -22,13 +22,14 @@ const createProject = async (nombreProyecto, graphModel, credenciales) => {
     const frontendPath = path.join(projectFolderPath, `${nombreProyecto}-frontend`);
     const backendPath = path.join(projectFolderPath, `${nombreProyecto}-backend`);
     const modelsPath = path.join(backendPath, 'models');
+    const routesPath = path.join(backendPath, 'routes');
     // Extraer credenciales del JSON
     const { bddHost, bddUser, bddPass } = credenciales;
 
     // Crear carpeta del proyecto
     if (fs.existsSync(projectFolderPath)) {
         console.log('seguimos con lo demas');
-        processGraphModel(graphModel, modelsPath);
+        processGraphModel(graphModel, modelsPath, routesPath);
 
     }else{
         fs.mkdirSync(projectFolderPath, {recursive: true});
@@ -107,16 +108,16 @@ sequelize.sync({ force: true }).then(() => {
 
         console.log('Proyecto creado correctamente');
 
-        processGraphModel(graphModel, modelsPath);
+        processGraphModel(graphModel, modelsPath, routesPath);
     }
 };
 
 
-const processGraphModel = (graphModel, modelsPath) => {
+const processGraphModel = (graphModel, modelsPath, routesPath) => {
     console.log('📌 Procesando nodos...');
     graphModel.nodeDataArray.forEach(node => {
         console.log(`🔹 Generando modelo: ${node.name}`);
-        generarArchivoClase(node, modelsPath);
+        generarArchivoClase(node, modelsPath, routesPath);
     });
 
     console.log('\n🔗 Procesando enlaces:');
@@ -125,7 +126,7 @@ const processGraphModel = (graphModel, modelsPath) => {
     });
 };
 
-const generarArchivoClase = (node, modelsPath) => {
+const generarArchivoClase = (node, modelsPath, routesPath) => {
     const className = node.name;
     const tableName = className.toLowerCase();
     const filePath = path.join(modelsPath, `${className}.js`);
@@ -162,6 +163,15 @@ module.exports = ${className};
 
     fs.writeFileSync(filePath, content.trim());
     console.log(`Archivo de modelo creado: ${filePath}`);
+
+    // agregar ruta al archivo de rutas
+    const routesFilePath = path.join(routesPath, 'index.js');
+    let routesContent = fs.readFileSync(routesFilePath, 'utf8');
+    const addroute = `
+    ${node.name} = require('../models/${node.name}');
+    `;
+    routesContent = addroute + routesContent;
+    fs.writeFileSync(routesFilePath, routesContent);
 }
 
 // Función para mapear tipos de datos del JSON a Sequelize
