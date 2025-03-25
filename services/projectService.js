@@ -16,12 +16,14 @@ const executeCommand = (command, cwd) => {
     });
 };
 
-const createProject = async (nombreProyecto, graphModel) => {
+const createProject = async (nombreProyecto, graphModel, credenciales) => {
     const desktopPath = path.join(require('os').homedir(), 'Desktop');
     const projectFolderPath = path.join(desktopPath, nombreProyecto);
     const frontendPath = path.join(projectFolderPath, `${nombreProyecto}-frontend`);
     const backendPath = path.join(projectFolderPath, `${nombreProyecto}-backend`);
     const modelsPath = path.join(backendPath, 'models');
+    // Extraer credenciales del JSON
+    const { bddHost, bddUser, bddPass } = credenciales;
 
     // Crear carpeta del proyecto
     if (fs.existsSync(projectFolderPath)) {
@@ -47,12 +49,62 @@ const createProject = async (nombreProyecto, graphModel) => {
         //Instalar sqlite3
         console.log('instalando sqlite3...');
         await executeCommand('npm install sqlite3', backendPath);
+        //Instalar dotenv
+        console.log('instalando dotenv...');
+        await executeCommand('npm install dotenv', backendPath);
 
 
         // Crear la carpeta models en el backend
         fs.mkdirSync(modelsPath, { recursive: true });
         console.log(`Carpeta 'models' creada en: ${modelsPath}`);
-    
+
+        //Crear archivo de configuración de la base de datos
+        const envContent = `
+        BDD_HOST=${bddHost}
+        BDD_USER=${bddUser}
+        BDD_PASS=${bddPass}
+        BDD_NAME=${nombreProyecto}
+        `;
+        fs.writeFileSync(path.join(backendPath, '.env'), envContent.trim());
+        console.log('Archivo de configuración de la base de datos creado');
+
+        // Crear archivo de conexión a la base de datos
+        const database= `
+        const { Sequelize } = require('sequelize');
+        require('dotenv').config();
+        const sequelize = new Sequelize(process.env.BDD_NAME, process.env.BDD_USER, process.env.BDD_PASS, {
+            host: './db.sqlite3',
+            dialect: 'sqlite',
+        });
+        module.exports = sequelize;
+        `; 
+        fs.writeFileSync(path.join(backendPath, 'database.js'), database.trim());
+        console.log('Archivo de conexión a la base de datos creado');
+
+        // Modificar app.js
+        const appPath = path.join(backendPath, 'app.js');
+        if (fs.existsSync(appPath)) {
+            let appContent = fs.readFileSync(appPath, 'utf8');
+
+            // Agregar las líneas necesarias al inicio del archivo
+            const extraCode = `
+const dotenv = require('dotenv');
+dotenv.config();
+const sequelize = require('./database.js');
+
+sequelize.sync({ force: true }).then(() => {
+  console.log('Base de datos conectada');
+}).catch(error => {
+  console.log('Error al conectar a la base de datos: ' + error.message);
+});
+            `;
+
+            appContent = extraCode + appContent;
+            fs.writeFileSync(appPath, appContent);
+            console.log('Modificaciones agregadas a app.js');
+        }
+
+
         console.log('Proyecto creado correctamente');
 
         processGraphModel(graphModel, modelsPath);
