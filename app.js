@@ -1,3 +1,13 @@
+const dotenv = require('dotenv');
+dotenv.config();
+const sequelize = require('./database.js');
+
+sequelize.sync({ force: true }).then(() => {
+  console.log('Base de datos conectada');
+}).catch(error => {
+  console.log('Error al conectar a la base de datos: ' + error.message);
+});
+
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
