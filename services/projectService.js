@@ -150,15 +150,53 @@ const processGraphModel = (graphModel, modelsPath, routesPath, controllersPath, 
     console.log(' Procesando nodos...');
     console.log('Generando archivos de login:');
     
+    const clasesRelacionadas = [];
+    const relacionesPorClase = {}; // Mapa para almacenar las relaciones por clase
 
     graphModel.nodeDataArray.forEach(node => {
         console.log(`🔹 Generando modelo: ${node.name}`);
+        clasesRelacionadas.push({ key: node.key, name: node.name });
+        console.log(clasesRelacionadas);
         generarArchivoClase(node, modelsPath, routesPath, controllersPath);
     });
 
-    console.log('\n Procesando enlaces:');
     graphModel.linkDataArray.forEach(link => {
         console.log(`    Relación: ${link.category || 'sin categoría'} (de ${link.from} a ${link.to})`);
+        if (link.category === 'agregacion' || link.category === 'composicion') {
+            if (!relacionesPorClase[link.from]) {
+                relacionesPorClase[link.from] = []; // Inicializar si no existe
+            }
+            const toClass = clasesRelacionadas.find(clase => clase.key === link.to);
+            if (toClass) {
+                relacionesPorClase[link.from].push(toClass.name); // Agregar la clase relacionada
+            }
+        }
+    });
+    
+    // Llamar a las funciones de relación con el mapa de relaciones
+    graphModel.linkDataArray.forEach(link => {
+        if (link.category === 'agregacion') {
+            agregarRelacionAgregacion(
+                modelsPath,
+                routesPath,
+                controllersPath,
+                middlewaresPath,
+                link,
+                clasesRelacionadas,
+                relacionesPorClase[link.from] || [] // Pasar un array vacío si no hay relaciones
+            );
+        } else if (link.category === 'composicion') {
+            agregarRelacionComposicion(
+                modelsPath,
+                routesPath,
+                controllersPath,
+                middlewaresPath,
+                link,
+                clasesRelacionadas,
+                relacionesPorClase[link.from] || [] // Pasar un array vacío si no hay relaciones
+            
+            );
+        }
     });
 
     generarArchivosLogin(modelsPath, routesPath, controllersPath, middlewaresPath);
@@ -500,6 +538,203 @@ const generarArchivosLogin = (modelsPath, routesPath, controllerPath, middleware
 
 
 }
+
+const agregarRelacionAgregacion = (modelsPath, routesPath, controllersPath, middlewaresPath, link, clasesRelacionadas, relatedClasses) => {
+    // Encontrar el nombre de la clase correspondiente al "from" y "to"
+    const fromClass = clasesRelacionadas.find(clase => clase.key === link.from);
+    const toClass = clasesRelacionadas.find(clase => clase.key === link.to);
+
+    if (fromClass && toClass) {
+        const fromClassName = fromClass.name;
+        const toClassName = toClass.name;
+        const filePath = path.join(modelsPath, `${fromClassName}.js`);
+
+        let hasManyRelation = `${fromClassName}.hasMany(${toClassName.toLowerCase()}, { foreignKey: '${fromClassName}id', onDelete: 'SET NULL' });`;
+        let belongsToRelation = `${toClassName.toLowerCase()}.belongsTo(${fromClassName}, { foreignKey: '${fromClassName}id' });`;
+
+        const content = `
+        const ${toClassName.toLowerCase()} = require('../models/${toClassName}');
+        ${hasManyRelation}
+        ${belongsToRelation}
+        `;
+        
+        let modelContent = fs.readFileSync(filePath, 'utf8');
+        const insertIndex = modelContent.indexOf('});') + 2; // Después de la última llave que cierra el modelo
+        modelContent = modelContent.slice(0, insertIndex) + content + modelContent.slice(insertIndex);
+        fs.writeFileSync(filePath, modelContent);
+        console.log('Relación de composición agregada correctamente al modelo');
+
+        //controlador
+        const controllerFilePath = path.join(controllersPath, `${fromClassName.toLowerCase()}Controller.js`);
+        let controllerContent = fs.readFileSync(controllerFilePath, 'utf8');
+        //Verificar si ya existe el endpoint con las relaciones
+        if(controllerContent.includes('module.exports.get'+fromClassName+'ById'+'WithRelations')){
+            
+        }else{
+           // Generar el array de includes correctamente
+           const includeArray = relatedClasses.map(className => `${className}Model`).join(', ');
+
+           const addControllers = `
+           ${relatedClasses.map(className => `const ${className}Model = require('../models/${className}');`).join('\n')}
+
+           module.exports.get${fromClassName}ByIdWithRelations = async (req, res) => {
+               try {
+                   const ${fromClassName.toLowerCase()} = await ${fromClassName}Model.findByPk(
+                       req.params.id,
+                       { include: [${includeArray}] }
+                   );
+                   return res.json(${fromClassName.toLowerCase()});
+               } catch (error) {
+                   return res.status(400).json({ error: error.message });
+               }
+           }
+           module.exports.get${fromClassName}WithRelations = async (req, res) => {
+               try {
+                   const ${fromClassName.toLowerCase()} = await ${fromClassName}Model.findAll({ include: [${includeArray}] });
+                   return res.json(${fromClassName.toLowerCase()});
+               } catch (error) {
+                   return res.status(400).json({ error: error.message });
+               }
+           }
+           module.exports.get${fromClassName}ActivosWithRelations = async (req, res) => {
+               try {
+                   const ${fromClassName.toLowerCase()} = await ${fromClassName}Model.findAll({
+                       where: { isActive: true },
+                       include: [${includeArray}]
+                   });
+                   return res.json(${fromClassName.toLowerCase()});
+               } catch (error) {
+                   return res.status(400).json({ error: error.message });
+               }
+           }
+           `;
+
+           controllerContent += addControllers;
+           fs.writeFileSync(controllerFilePath, controllerContent, 'utf8');
+           console.log(`Endpoints añadidos para ${fromClassName}.`);
+            //agregar rutas
+            routesFilePath = path.join(routesPath, 'index.js');
+            let routesContent = fs.readFileSync(routesFilePath, 'utf8');
+    const addroute = `
+    router.get('/${fromClassName.toLowerCase()}WithRelations',verification.verifyToken, ${fromClassName.toLowerCase()}Controller.get${fromClassName}WithRelations);
+    router.get('/${fromClassName.toLowerCase()}WithRelations/activos',verification.verifyToken, ${fromClassName.toLowerCase()}Controller.get${fromClassName}ActivosWithRelations);
+    router.get('/${fromClassName.toLowerCase()}WithRelations/:id',verification.verifyToken, ${fromClassName.toLowerCase()}Controller.get${fromClassName}ByIdWithRelations);
+    `;
+        // Encuentra dónde se declara "router"
+        const routerDeclaration = "/* GET home page. */";
+        const insertIndex = routesContent.indexOf(routerDeclaration) - 1;
+
+        // Inserta las nuevas rutas justo después de la declaración de "router"
+        routesContent = routesContent.slice(0, insertIndex) + addroute + routesContent.slice(insertIndex);
+
+        fs.writeFileSync(routesFilePath, routesContent);
+            console.log(`Endpoints añadidos para ${fromClassName}.`);
+            
+        }
+
+    } else {
+        console.log(`Error: No se pudo encontrar la clase para ${link.from} o ${link.to}`);
+    }
+};
+
+const agregarRelacionComposicion = (modelsPath, routesPath, controllersPath, middlewaresPath, link, clasesRelacionadas, relatedClasses) => {
+    // Encontrar el nombre de la clase correspondiente al "from" y "to"
+    const fromClass = clasesRelacionadas.find(clase => clase.key === link.from);
+    const toClass = clasesRelacionadas.find(clase => clase.key === link.to);
+
+    if (fromClass && toClass) {
+        const fromClassName = fromClass.name;
+        const toClassName = toClass.name;
+        const filePath = path.join(modelsPath, `${fromClassName}.js`);
+
+        let hasManyRelation = `${fromClassName}.hasMany(${toClassName.toLowerCase()}, { foreignKey: '${fromClassName}id', onDelete: 'CASCADE' });`;
+        let belongsToRelation = `${toClassName.toLowerCase()}.belongsTo(${fromClassName}, { foreignKey: '${fromClassName}id' });`;
+
+        const content = `
+        const ${toClassName.toLowerCase()} = require('../models/${toClassName}');
+        ${hasManyRelation}
+        ${belongsToRelation}
+        `;
+        
+        let modelContent = fs.readFileSync(filePath, 'utf8');
+        const insertIndex = modelContent.indexOf('});') + 2; // Después de la última llave que cierra el modelo
+        modelContent = modelContent.slice(0, insertIndex) + content + modelContent.slice(insertIndex);
+        fs.writeFileSync(filePath, modelContent);
+        console.log('Relación de composición agregada correctamente');
+
+        
+        //controlador
+        const controllerFilePath = path.join(controllersPath, `${fromClassName.toLowerCase()}Controller.js`);
+        let controllerContent = fs.readFileSync(controllerFilePath, 'utf8');
+        //Verificar si ya existe el endpoint con las relaciones
+        if(controllerContent.includes('module.exports.get'+fromClassName+'ById'+'WithRelations')){
+            
+        }else{
+           // Generar el array de includes correctamente
+           const includeArray = relatedClasses.map(className => `${className}Model`).join(', ');
+
+           const addControllers = `
+           ${relatedClasses.map(className => `const ${className}Model = require('../models/${className}');`).join('\n')}
+
+           module.exports.get${fromClassName}ByIdWithRelations = async (req, res) => {
+               try {
+                   const ${fromClassName.toLowerCase()} = await ${fromClassName}Model.findByPk(
+                       req.params.id,
+                       { include: [${includeArray}] }
+                   );
+                   return res.json(${fromClassName.toLowerCase()});
+               } catch (error) {
+                   return res.status(400).json({ error: error.message });
+               }
+           }
+           module.exports.get${fromClassName}WithRelations = async (req, res) => {
+               try {
+                   const ${fromClassName.toLowerCase()} = await ${fromClassName}Model.findAll({ include: [${includeArray}] });
+                   return res.json(${fromClassName.toLowerCase()});
+               } catch (error) {
+                   return res.status(400).json({ error: error.message });
+               }
+           }
+           module.exports.get${fromClassName}ActivosWithRelations = async (req, res) => {
+               try {
+                   const ${fromClassName.toLowerCase()} = await ${fromClassName}Model.findAll({
+                       where: { isActive: true },
+                       include: [${includeArray}]
+                   });
+                   return res.json(${fromClassName.toLowerCase()});
+               } catch (error) {
+                   return res.status(400).json({ error: error.message });
+               }
+           }
+           `;
+
+           controllerContent += addControllers;
+           fs.writeFileSync(controllerFilePath, controllerContent, 'utf8');
+           console.log(`Endpoints añadidos para ${fromClassName}.`);
+            //agregar rutas
+            routesFilePath = path.join(routesPath, 'index.js');
+            let routesContent = fs.readFileSync(routesFilePath, 'utf8');
+    const addroute = `
+    router.get('/${fromClassName.toLowerCase()}WithRelations',verification.verifyToken, ${fromClassName.toLowerCase()}Controller.get${fromClassName}WithRelations);
+    router.get('/${fromClassName.toLowerCase()}WithRelations/activos',verification.verifyToken, ${fromClassName.toLowerCase()}Controller.get${fromClassName}ActivosWithRelations);
+    router.get('/${fromClassName.toLowerCase()}WithRelations/:id',verification.verifyToken, ${fromClassName.toLowerCase()}Controller.get${fromClassName}ByIdWithRelations);
+    `;
+        // Encuentra dónde se declara "router"
+        const routerDeclaration = "/* GET home page. */";
+        const insertIndex = routesContent.indexOf(routerDeclaration) - 1;
+
+        // Inserta las nuevas rutas justo después de la declaración de "router"
+        routesContent = routesContent.slice(0, insertIndex) + addroute + routesContent.slice(insertIndex);
+
+        fs.writeFileSync(routesFilePath, routesContent);
+            console.log(`Endpoints añadidos para ${fromClassName}.`);
+            
+        }
+
+    } else {
+        console.log(`Error: No se pudo encontrar la clase para ${link.from} o ${link.to}`);
+    }
+};
 
 
 // Función para mapear tipos de datos del JSON a Sequelize
