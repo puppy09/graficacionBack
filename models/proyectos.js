@@ -22,5 +22,7 @@ Proyectos.init({
     tableName: 'proyectos',
     timestamps: false
 });
-
+const versiones = require('../models/versiones.js');
+Proyectos.hasMany(versiones, {foreignKey: 'id_proyecto', onDelete: 'SET NULL'})
+versiones.belongsTo(Proyectos, {foreignKey: 'id_proyecto'});
 module.exports = Proyectos;

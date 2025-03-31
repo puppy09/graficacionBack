@@ -25,4 +25,7 @@ Diagrama.init({
     timestamps: false
 });
 
+    const versiones = require('../models/versiones.js');
+    Diagrama.hasMany(versiones, {foreignKey: 'id_diagrama', onDelete: 'SET NULL'})
+    versiones.belongsTo(Diagrama, {foreignKey: 'id_diagrama'});
 module.exports = Diagrama;

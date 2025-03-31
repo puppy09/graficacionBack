@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
-const versionService = require('../services/versionService');
-const { crearProyecto, getProyectos, updaProyecto } = require('../controllers/proyectos');
+//const versionService = require('../services/versionService');
+//const { crearProyecto, getProyectos, updaProyecto } = require('../controllers/proyectos');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -9,7 +9,7 @@ router.get('/', function(req, res, next) {
 });
 
 //Proyectos
-router.post('/crearproyecto', crearProyecto);
+/*router.post('/crearproyecto', crearProyecto);
 router.get('/proyectos', getProyectos);
-router.put('/proyecto/:id_proyecto', updaProyecto);
+router.put('/proyecto/:id_proyecto', updaProyecto);*/
 module.exports = router;
