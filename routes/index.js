@@ -3,7 +3,7 @@ const { request } = require('../app');
 var router = express.Router();
 //const versionService = require('../services/versionService');
 const { crearProyecto, getProyectos, updatedProyecto } = require('../controllers/proyectos');
-const { crearDiagrama, getDiagramas } = require('../controllers/diagrama');
+const { crearDiagrama, getDiagramas, updateDiagrama } = require('../controllers/diagrama');
 const { crearVersion, getVersion, updatedVersion } = require('../controllers/versiones');
 
 /* GET home page. */
@@ -19,6 +19,7 @@ router.put('/proyecto/:id_proyecto', updatedProyecto);
 //Diagramas
 router.post('/creardiagrama', crearDiagrama);
 router.get('/diagramas', getDiagramas);
+router.put('/diagrama/:diagrama', updateDiagrama);
 
 //Versiones
 router.post('/crearversion', crearVersion);
