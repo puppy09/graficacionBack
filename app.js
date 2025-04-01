@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const sequelize = require('./database.js');
 
-sequelize.sync({ force: true }).then(() => {
+sequelize.sync({ force: false }).then(() => {
   console.log('Base de datos conectada');
 }).catch(error => {
   console.log('Error al conectar a la base de datos: ' + error.message);
@@ -49,5 +49,6 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
 
 module.exports = app;
