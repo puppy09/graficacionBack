@@ -17,7 +17,7 @@ const getDiagramas = async(req, res)=>{
     try{
 
         const diagramas = await Diagrama.findAll();
-        return res.status(200).json({diagramas});
+        return res.status(200).json(diagramas);
     }catch(error){
         console.log(error);
         return res.status(500).json({message:' Error creando proyecto'});

@@ -1,6 +1,8 @@
 const dotenv = require('dotenv');
 dotenv.config();
 const sequelize = require('./database.js');
+const cors = require('cors');
+
 
 sequelize.sync({ force: false }).then(() => {
   console.log('Base de datos conectada');
@@ -20,6 +22,7 @@ var projectRouter = require('./routes/project');
 
 var app = express();
 
+app.use(cors());
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -49,6 +52,5 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
-
 
 module.exports = app;

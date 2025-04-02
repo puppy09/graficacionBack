@@ -5,7 +5,7 @@ const crearProyecto = async(req,res)=>{
         const {nombre, descripcion}= req.body;
 
         const nuevoProyecto = await Proyectos.create({nombre,descripcion});
-        return res.status(201).json({nuevoProyecto});
+        return res.status(201).json(nuevoProyecto);
     } catch(error){
         console.log(error);
         return res.status(500).json({message:' Error creando proyecto'});
@@ -15,7 +15,7 @@ const crearProyecto = async(req,res)=>{
 const getProyectos = async(req, res)=>{
     try{
         const proyectos = await Proyectos.findAll();
-        return res.status(200).json({proyectos});
+        return res.status(200).json(proyectos);
     }catch(error){
         console.log(error);
         return res.status(500).json({message:' Error creando proyecto'});
@@ -30,7 +30,7 @@ const updatedProyecto = async(req, res)=>{
         updaproyecto.nombre = nombre;
         updaproyecto.descripcion=descripcion;
         updaproyecto.save();
-        return res.status(200).json({updaproyecto});
+        return res.status(200).json(updaproyecto);
     }catch(error){
         console.log(error);
         return res.status(500).json({message:' Error creando proyecto'});
