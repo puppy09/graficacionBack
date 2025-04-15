@@ -14,14 +14,18 @@ const crearVersion = async(req,res)=>{
 const updatedVersion = async(req,res)=>{
     try{
         const {proyecto, diagrama} = req.params;
-        const {version, contenido} = req.body;
+        const proyectoInt = parseInt(proyecto);
+        const diagramaInt = parseInt(diagrama);
+        const {contenido} = req.body;
+        console.log(contenido, proyectoInt, diagramaInt);
         const versionUpda = await Versiones.findOne({
             where:{
-                id_proyecto: proyecto,
-                id_diagrama: diagrama
+                id_proyecto: proyectoInt,
+                id_diagrama: diagramaInt,
+                isActive: 1
             }
         });
-        versionUpda.version = version;
+        console.log("Proyecto", versionUpda);
         versionUpda.json = contenido;
         versionUpda.save();
         return res.status(200).json(versionUpda);
@@ -35,10 +39,13 @@ const updatedVersion = async(req,res)=>{
 const getVersion = async(req,res)=>{
     try{
         const {proyecto, diagrama} = req.params;
-        const versiones = await Versiones.findOne({
+
+        const proyectoParsed = parseInt(proyecto);
+        const diagramaParsed = parseInt(diagrama);
+        const versiones = await Versiones.findAll({
             where:{
-                id_proyecto: proyecto,
-                id_diagrama: diagrama
+                id_proyecto: proyectoParsed,
+                id_diagrama: diagramaParsed
             }
         });
         return res.status(200).json(versiones);
