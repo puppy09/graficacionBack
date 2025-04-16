@@ -13,18 +13,12 @@ const crearVersion = async(req,res)=>{
 
 const updatedVersion = async(req,res)=>{
     try{
-        const {proyecto, diagrama} = req.params;
-        const proyectoInt = parseInt(proyecto);
-        const diagramaInt = parseInt(diagrama);
+        const {version} = req.params;
+        const versionInt = parseInt(version);
+//        const diagramaInt = parseInt(diagrama);
         const {contenido} = req.body;
-        console.log(contenido, proyectoInt, diagramaInt);
-        const versionUpda = await Versiones.findOne({
-            where:{
-                id_proyecto: proyectoInt,
-                id_diagrama: diagramaInt,
-                isActive: 1
-            }
-        });
+     //   console.log(contenido, proyectoInt, diagramaInt);
+        const versionUpda = await Versiones.findByPk(versionInt);
         console.log("Proyecto", versionUpda);
         versionUpda.json = contenido;
         versionUpda.save();
@@ -54,4 +48,17 @@ const getVersion = async(req,res)=>{
         return res.status(500).json({message:' Error creando proyecto'});
     }
 }
-module.exports = {crearVersion, updatedVersion, getVersion}
+
+const getSingleVersion = async(req, res)=>{
+    try{
+        const {version} = req.params;
+        const versionParsed = parseInt(version);
+
+        const versionFound = await Versiones.findByPk(versionParsed);
+        return res.status(200).json(versionFound);
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({message:' Error obteniendo version'});
+    }
+}
+module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion}
