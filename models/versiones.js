@@ -1,5 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database.js');
+const ProyectosCreados = require('./proyectos_creados.js');
 
 class Versiones extends Model{}
 Versiones.init({
@@ -42,4 +43,12 @@ Versiones.init({
         as: 'diagrama' // Alias to use when fetching associated data
     });
 }*/
+
+Versiones.hasMany(ProyectosCreados,{foreignKey:'dia_secuencias'});
+Versiones.hasMany(ProyectosCreados,{foreignKey:'dia_componentes'});
+Versiones.hasMany(ProyectosCreados,{foreignKey:'dia_cu'});
+Versiones.hasMany(ProyectosCreados,{foreignKey:'dia_paquetes'});
+Versiones.hasMany(ProyectosCreados,{foreignKey:'dia_clases'});
+
+ProyectosCreados.belongsTo(Versiones,{foreignKey:'id_version'});
 module.exports = Versiones;

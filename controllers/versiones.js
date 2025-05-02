@@ -61,4 +61,23 @@ const getSingleVersion = async(req, res)=>{
         return res.status(500).json({message:' Error obteniendo version'});
     }
 }
-module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion}
+
+const getAllVersiones = async(req, res)=>{
+    try{
+        const {proyecto} = req.params;
+
+        const proyectoParsed = parseInt(proyecto);
+        const versiones = await Versiones.findAll({
+            attributes: ['id_proyecto', 'id_diagrama','id_version','version'],
+            where:{
+                id_proyecto: proyectoParsed
+            }
+
+        });
+        return res.status(200).json(versiones);
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({message:' Error creando proyecto'});
+    }
+}
+module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones}

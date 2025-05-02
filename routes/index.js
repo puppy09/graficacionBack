@@ -4,7 +4,7 @@ var router = express.Router();
 //const versionService = require('../services/versionService');
 const { crearProyecto, getProyectos, updatedProyecto } = require('../controllers/proyectos');
 const { crearDiagrama, getDiagramas, updateDiagrama } = require('../controllers/diagrama');
-const { crearVersion, getVersion, updatedVersion, getSingleVersion } = require('../controllers/versiones');
+const { crearVersion, getVersion, updatedVersion, getSingleVersion, getAllVersiones } = require('../controllers/versiones');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -24,6 +24,8 @@ router.put('/diagrama/:diagrama', updateDiagrama);
 //Versiones
 router.post('/crearversion', crearVersion);
 router.get('/version/:version', getSingleVersion);
+router.get('/versiones/:proyecto',getAllVersiones);
 router.get('/versiones/:proyecto/:diagrama', getVersion);
+
 router.put('/version/:version', updatedVersion);
 module.exports = router;
