@@ -1,4 +1,4 @@
-const ProyectosCreados = require("../models/proyectos_creados");
+
 const Versiones = require("../models/versiones");
 
 const crearVersion = async(req,res)=>{
@@ -83,4 +83,4 @@ const getAllVersiones = async(req, res)=>{
 }
 
 
-module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones, postProyectoCreado}
+module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones}
