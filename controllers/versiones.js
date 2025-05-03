@@ -1,3 +1,4 @@
+const ProyectosCreados = require("../models/proyectos_creados");
 const Versiones = require("../models/versiones");
 
 const crearVersion = async(req,res)=>{
@@ -80,4 +81,6 @@ const getAllVersiones = async(req, res)=>{
         return res.status(500).json({message:' Error creando proyecto'});
     }
 }
-module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones}
+
+
+module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones, postProyectoCreado}
