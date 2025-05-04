@@ -18,7 +18,7 @@ ProyectosCreados.init({
     },
     dia_clases:{
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
     dia_paquetes:{
         type: DataTypes.INTEGER,
