@@ -1282,15 +1282,9 @@ processGraphModelFrontend = async (graphModel, componentsFolderPath, servicesFol
 
     const clasesRelacionadas = [];
     const relacionesPorClase = {}; // Mapa para almacenar las relaciones por clase
-
-    graphModel.nodeDataArray.forEach(async node => {
-        console.log(`🔹 Generando modelo: ${node.name}`);
+    graphModel.nodeDataArray.forEach(node => {
         clasesRelacionadas.push({ key: node.key, name: node.name });
-        console.log(clasesRelacionadas);
-        await generarComponentesClases(node, componentsFolderPath, appRoutesPath);
-        await generarServiciosClases(node, servicesFolderPath);
     });
-
     graphModel.linkDataArray.forEach(link => {
         console.log(`    Relación: ${link.category || 'sin categoría'} (de ${link.from} a ${link.to})`);
         if (link.category === 'agregacion' || link.category === 'composicion') {
@@ -1307,10 +1301,19 @@ processGraphModelFrontend = async (graphModel, componentsFolderPath, servicesFol
     // Llamar a las funciones de relación con el mapa de relaciones
     graphModel.linkDataArray.forEach(link => {
         if (link.category === 'agregacion') {
-            
+
         } else if (link.category === 'composicion') {
             
         }});
+
+    graphModel.nodeDataArray.forEach(async node => {
+        console.log(`🔹 Generando modelo: ${node.name}`);
+        clasesRelacionadas.push({ key: node.key, name: node.name });
+        console.log(clasesRelacionadas);
+        await generarComponentesClases(node, componentsFolderPath, appRoutesPath);
+        await generarServiciosClases(node, servicesFolderPath, relacionesPorClase);
+    });
+
 };
 
 generarComponentesClases = async (node, componentsFolderPath, appRoutesPath) => {
@@ -1340,9 +1343,80 @@ generarComponentesClases = async (node, componentsFolderPath, appRoutesPath) => 
     fs.writeFileSync(appRoutesPath, routesContent, 'utf8');
 }
 
-generarServiciosClases = async (node, servicesFolderPath) => {
+generarServiciosClases = async (node, servicesFolderPath, relacionesPorClase) => {
     await executeCommand(`ng g s ${node.name}`, servicesFolderPath);
-}
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+    const serviceName = capitalize(node.name) + 'Service';
+    const servicePath = path.join(servicesFolderPath, `${node.name}.service.ts`);
+    let serviceContent = `
+    import { inject, Injectable } from '@angular/core';
+    import { apiUrl } from '../apiLink';
+    import { HttpClient } from '@angular/common/http';
+    import { Observable } from 'rxjs';
+
+    @Injectable({
+      providedIn: 'root'
+    })
+    export class ${serviceName} {
+      private apiUrl = apiUrl + '/${node.name.toLowerCase()}';
+      private http = inject(HttpClient);
+
+      constructor() {}
+
+      getAll(): Observable<any> {
+        return this.http.get(this.apiUrl);
+      }
+
+      getActivos(): Observable<any> {
+        return this.http.get(this.apiUrl + '/activos');
+      }
+
+      getById(id: number): Observable<any> {
+        return this.http.get(this.apiUrl + '/' + id);
+      }
+
+      post(data: any): Observable<any> {
+        return this.http.post(this.apiUrl, data);
+      }
+
+      put(id: number, data: any): Observable<any> {
+        return this.http.put(this.apiUrl + '/' + id, data);
+      }
+
+      delete(id: number): Observable<any> {
+        return this.http.delete(this.apiUrl + '/' + id);
+      }
+    }
+    `;
+
+    //  Agregar endpoints si hay relaciones
+    if (relacionesPorClase[node.key] && relacionesPorClase[node.key].length > 0) {
+        const urlBase = `'/${node.name.toLowerCase()}WithRelations'`;
+        const withRelationsMethods = `
+      
+      getWithRelations(): Observable<any> {
+        return this.http.get(apiUrl + ${urlBase});
+      }
+
+      getActivosWithRelations(): Observable<any> {
+        return this.http.get(apiUrl + ${urlBase} + '/activos');
+      }
+
+      getByIdWithRelations(id: number): Observable<any> {
+        return this.http.get(apiUrl + ${urlBase} + '/' + id);
+      }
+        `;
+     // Insertar antes del último cierre de la clase
+    const closingIndex = serviceContent.lastIndexOf('}');
+    serviceContent = serviceContent.slice(0, closingIndex) + withRelationsMethods + '\n' + serviceContent.slice(closingIndex);
+    }
+    console.log(relacionesPorClase[node.key]);
+
+
+
+    fs.writeFileSync(servicePath, serviceContent.trim(), 'utf8');
+    console.log(`Servicio generado correctamente: ${servicePath}`);
+};
 
 module.exports = {
     createProject
