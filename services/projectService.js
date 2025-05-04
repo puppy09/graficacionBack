@@ -147,7 +147,9 @@ app.use(cors({ credentials: true, origin: true }));
         // Crear proyecto frontend
         console.log('Creando proyecto frontend en angular...');
         await executeCommand(`npx -y @angular/cli new ${nombreProyecto}-frontend --defaults`, projectFolderPath);
-        crearArchivosFrontend(frontendPath);
+        crearArchivosFrontend(frontendPath, graphModel);
+        console.log('Proyecto frontend creado correctamente');
+        console.log('Todo al cien papi');
     }
 };
 
@@ -755,7 +757,7 @@ const mapSequelizeType = (type) => {
     }
 };
 
-const crearArchivosFrontend = async (frontendPath) => {
+const crearArchivosFrontend = async (frontendPath, graphModel) => {
     const srcPath = path.join(frontendPath, 'src');
     const appComponentPath = path.join(srcPath, 'app', 'app.component.html');
     const appConfigPath = path.join(srcPath, 'app', 'app.config.ts');
@@ -819,6 +821,7 @@ export const routes: Routes = [
 
     await generarComponentesBase(componentsFolderPath);
     await generarServiciosBase(servicesFolderPath);
+    await processGraphModelFrontend(graphModel, componentsFolderPath, servicesFolderPath, appRoutesPath);
 
     
 }
@@ -1273,6 +1276,73 @@ generarServiciosBase = async (servicesFolderPath) => {
     fs.writeFileSync(userServicePath, userServiceContent.trim(), 'utf8');
     console.log('Servicios generados correctamente');
 };
+
+processGraphModelFrontend = async (graphModel, componentsFolderPath, servicesFolderPath, appRoutesPath) => {
+    console.log('Procesando el modelo de grafo para el frontend...');
+
+    const clasesRelacionadas = [];
+    const relacionesPorClase = {}; // Mapa para almacenar las relaciones por clase
+
+    graphModel.nodeDataArray.forEach(async node => {
+        console.log(`🔹 Generando modelo: ${node.name}`);
+        clasesRelacionadas.push({ key: node.key, name: node.name });
+        console.log(clasesRelacionadas);
+        await generarComponentesClases(node, componentsFolderPath, appRoutesPath);
+        await generarServiciosClases(node, servicesFolderPath);
+    });
+
+    graphModel.linkDataArray.forEach(link => {
+        console.log(`    Relación: ${link.category || 'sin categoría'} (de ${link.from} a ${link.to})`);
+        if (link.category === 'agregacion' || link.category === 'composicion') {
+            if (!relacionesPorClase[link.from]) {
+                relacionesPorClase[link.from] = []; // Inicializar si no existe
+            }
+            const toClass = clasesRelacionadas.find(clase => clase.key === link.to);
+            if (toClass) {
+                relacionesPorClase[link.from].push(toClass.name); // Agregar la clase relacionada
+            }
+        }
+    });
+    
+    // Llamar a las funciones de relación con el mapa de relaciones
+    graphModel.linkDataArray.forEach(link => {
+        if (link.category === 'agregacion') {
+            
+        } else if (link.category === 'composicion') {
+            
+        }});
+};
+
+generarComponentesClases = async (node, componentsFolderPath, appRoutesPath) => {
+    await executeCommand(`ng g c ${node.name}`, componentsFolderPath);
+    const componentPath = path.join(componentsFolderPath, node.name);
+    const componentHtmlPath = path.join(componentPath, `${node.name}.component.html`);
+    const componentTsPath = path.join(componentPath, `${node.name}.component.ts`);
+    const componentCssPath = path.join(componentPath, `${node.name}.component.css`);
+
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+    const className = capitalize(node.name) + 'Component';
+    //Agregar a la ruta
+    const  importComponent = `
+    import { ${className} } from './components/${node.name.toLowerCase()}/${node.name.toLowerCase()}.component';
+    `
+    let routesContent = fs.readFileSync(appRoutesPath, 'utf8');
+    routesContent = importComponent + '\n' + routesContent;
+
+    const addRoute = `
+    ,{
+        path: '${node.name.toLowerCase()}',
+        component: ${className}
+    }
+    `
+    const insertIndex = routesContent.indexOf('];') - 1; //
+    routesContent = routesContent.slice(0, insertIndex) + addRoute + routesContent.slice(insertIndex);
+    fs.writeFileSync(appRoutesPath, routesContent, 'utf8');
+}
+
+generarServiciosClases = async (node, servicesFolderPath) => {
+    await executeCommand(`ng g s ${node.name}`, servicesFolderPath);
+}
 
 module.exports = {
     createProject
