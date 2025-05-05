@@ -106,7 +106,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const sequelize = require('./database.js');
 
-sequelize.sync({ force: true }).then(() => {
+sequelize.sync({ force: false }).then(() => {
   console.log('Base de datos conectada');
 }).catch(error => {
   console.log('Error al conectar a la base de datos: ' + error.message);
@@ -1587,27 +1587,27 @@ generarServiciosClases = async (node, servicesFolderPath, relacionesPorClase) =>
       constructor() {}
 
       getAll(): Observable<any> {
-        return this.http.get(this.apiUrl);
+        return this.http.get(this.apiUrl,{withCredentials: true});
       }
 
       getActivos(): Observable<any> {
-        return this.http.get(this.apiUrl + '/activos');
+        return this.http.get(this.apiUrl + '/activos', {withCredentials: true});
       }
 
       getById(id: number): Observable<any> {
-        return this.http.get(this.apiUrl + '/' + id);
+        return this.http.get(this.apiUrl + '/' + id, {withCredentials: true});
       }
 
       post(data: any): Observable<any> {
-        return this.http.post(this.apiUrl, data);
+        return this.http.post(this.apiUrl, data, {withCredentials: true});
       }
 
       put(id: number, data: any): Observable<any> {
-        return this.http.put(this.apiUrl + '/' + id, data);
+        return this.http.put(this.apiUrl + '/' + id, data, {withCredentials: true});
       }
 
       delete(id: number): Observable<any> {
-        return this.http.delete(this.apiUrl + '/' + id);
+        return this.http.delete(this.apiUrl + '/' + id, {withCredentials: true});
       }
     }
     `;
@@ -1618,15 +1618,15 @@ generarServiciosClases = async (node, servicesFolderPath, relacionesPorClase) =>
         const withRelationsMethods = `
       
       getWithRelations(): Observable<any> {
-        return this.http.get(apiUrl + ${urlBase});
+        return this.http.get(apiUrl + ${urlBase}, {withCredentials: true});
       }
 
       getActivosWithRelations(): Observable<any> {
-        return this.http.get(apiUrl + ${urlBase} + '/activos');
+        return this.http.get(apiUrl + ${urlBase} + '/activos', {withCredentials: true});
       }
 
       getByIdWithRelations(id: number): Observable<any> {
-        return this.http.get(apiUrl + ${urlBase} + '/' + id);
+        return this.http.get(apiUrl + ${urlBase} + '/' + id, {withCredentials: true});
       }
         `;
      // Insertar antes del último cierre de la clase
