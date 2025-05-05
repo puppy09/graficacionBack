@@ -1225,25 +1225,227 @@ export class RegisterComponent {
 
     //Main menu component
     const mainMenuComponentHtmlContent = `
-    <p>main-menu works!</p>
+    <div class="main-content">
+    <div class="text-container">
+        <p class="parrafo">Seleccione una clase para acceder al CRUD</p>
+        <div class="grid">
+            @if (proyectos && proyectos.length > 0) {
+                @for (proyecto of proyectosPaginados(); track $index) {
+                    <a class="card" (click)="Ingresar(proyecto.nombre)">
+                        <h5 class="card-title">{{proyecto.nombre}}</h5>
+                    </a>
+                }
+            } @else {
+                <p class="no-proyectos">No hay proyectos disponibles.</p>
+            }
+        </div>
+
+        @if (proyectos && totalPages > 1) {
+            <div class="pagination">
+                <button class="page-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">Previous</button>
+                @for (pagina of generarPaginas(); track $index) {
+                    <button 
+                        class="page-number" 
+                        [ngClass]="{'active': paginaActual === pagina}" 
+                        (click)="cambiarPagina(pagina)">
+                        {{pagina}}
+                    </button>
+                }
+                <button class="page-btn" [disabled]="paginaActual === totalPages" (click)="cambiarPagina(paginaActual + 1)">Next</button>
+            </div>
+        }
+    </div>
+</div>
     `
     fs.writeFileSync(mainMenuComponentHtmlPath, mainMenuComponentHtmlContent, 'utf8');
     const mainMenuComponentTsContent = `
-    import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-main-menu',
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './main-menu.component.html',
   styleUrl: './main-menu.component.css'
 })
 export class MainMenuComponent {
+  proyectos: any[]=[
+  
+  ]
 
+  nombre:any;
+  itemsPorPagina = 6; // Número de proyectos por página
+  paginaActual = 1;   // Página actual
+  descripcion:any;
+  constructor(private router: Router){}
+  Ingresar(nombre: string){
+    this.nombre=nombre.toLocaleLowerCase();
+    this.router.navigate(['/' + this.nombre]);
+    console.log(this.nombre);
+  }
+  proyectosPaginados(): any[] {
+    const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
+    const fin = inicio + this.itemsPorPagina;
+    return this.proyectos.slice(inicio, fin);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.proyectos.length / this.itemsPorPagina);
+  }
+  // Cambia la página actual
+  cambiarPagina(pagina: number): void {
+    if (pagina >= 1 && pagina <= this.totalPages) {
+      this.paginaActual = pagina;
+    }
+  }
+
+  // Genera un array con los números de página
+  generarPaginas(): number[] {
+    return Array.from({ length: this.totalPages }, (_, i) => i + 1);
+  }
 }
     `
     fs.writeFileSync(mainMenuComponentTsPath, mainMenuComponentTsContent, 'utf8');
     const mainMenuComponentCssContent = `
+    body {
+    font-family: 'Lexend Deca', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9fafb;
+    color: #111827;
+}
+
+.main-content {
+    padding: 2rem;
+}
+
+.text-container {
+    max-width: 1200px;
+    margin: 0 auto;
+
+}
+
+.titulo {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.subtitulo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 2rem;
+}
+
+.parrafo {
+    color: #4b5563;
+    margin-bottom: 1.5rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: #1e40af;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    grid-template-rows: repeat(2,1fr);
+    gap: 1rem;
+    margin-top: 1rem;
     
+}
+
+.card {
+    background-color: #124fb2;
+    border: 1px solid #e5e7eb;
+    color: #ffff;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: background-color 0.3s ease;
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.card:hover {
+    background-color: #0e2e61;
+    transform: translateY(-5px);
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.card-description {
+    margin-left: 1rem;
+    color: #374151;
+    flex-grow: 1;
+}
+
+.btn-ingresar {
+    align-self: flex-start;
+    margin-left: 1rem;
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-ingresar:hover {
+    background-color: #1e40af;
+}
+
+.no-proyectos {
+    color: #6b7280;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+    gap: 0.5rem;
+}
+
+.page-btn,
+.page-number {
+    padding: 0.5rem 1rem;
+    background-color: #e5e7eb;
+    color: #374151;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-number.active {
+    background-color: #3b82f6;
+    color: white;
+}
     `
     fs.writeFileSync(mainMenuComponentCssPath, mainMenuComponentCssContent, 'utf8');
     console.log('Componentes generados correctamente');
@@ -1314,6 +1516,27 @@ processGraphModelFrontend = async (graphModel, componentsFolderPath, servicesFol
         await generarServiciosClases(node, servicesFolderPath, relacionesPorClase);
     });
 
+
+    const mainMenuComponentPath = path.join(componentsFolderPath, 'main-menu');
+    const mainMenuComponentTsPath = path.join(mainMenuComponentPath, 'main-menu.component.ts');
+
+// Leer el archivo actual
+let mainMenuContent = fs.readFileSync(mainMenuComponentTsPath, 'utf8');
+
+// Generar contenido de proyectos
+const proyectosEntries = graphModel.nodeDataArray.map(node => {
+  return `  { nombre: '${node.name}' }`;
+}).join(',\n');
+
+// Crear nuevo array
+const nuevosProyectos = `proyectos: any[] = [\n${proyectosEntries}\n];`;
+
+// Reemplazar la definición anterior del array
+mainMenuContent = mainMenuContent.replace(/proyectos:\s*any\[\]\s*=\s*\[[\s\S]*?\]/, nuevosProyectos);
+
+
+// Escribir el nuevo contenido
+fs.writeFileSync(mainMenuComponentTsPath, mainMenuContent, 'utf8');
 };
 
 generarComponentesClases = async (node, componentsFolderPath, appRoutesPath) => {
