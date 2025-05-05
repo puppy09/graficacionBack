@@ -218,9 +218,12 @@ const generarArchivoClase = (node, modelsPath, routesPath, controllersPath) => {
 
     let properties = '';
     node.properties.forEach(prop => {
-        properties += `    ${prop.name}: {\n`;
-        properties += `        type: DataTypes.${mapSequelizeType(prop.type)},\n`;
-        properties += `        allowNull: false\n    },\n`;
+        // Validar que el nombre del atributo no sea "id" (en cualquier combinación de mayúsculas y minúsculas)
+        if (prop.name.toLowerCase() !== 'id') {
+            properties += `    ${prop.name}: {\n`;
+            properties += `        type: DataTypes.${mapSequelizeType(prop.type)},\n`;
+            properties += `        allowNull: false\n    },\n`;
+        }
     });
 
     const content = `
@@ -557,6 +560,7 @@ const agregarRelacionAgregacion = (modelsPath, routesPath, controllersPath, midd
         const toClassName = toClass.name;
         const filePath = path.join(modelsPath, `${fromClassName}.js`);
 
+        
         let hasManyRelation = `${fromClassName}.hasMany(${toClassName.toLowerCase()}, { foreignKey: '${fromClassName}id', onDelete: 'SET NULL' });`;
         let belongsToRelation = `${toClassName.toLowerCase()}.belongsTo(${fromClassName}, { foreignKey: '${fromClassName}id' });`;
 
@@ -1512,7 +1516,7 @@ processGraphModelFrontend = async (graphModel, componentsFolderPath, servicesFol
         console.log(`🔹 Generando modelo: ${node.name}`);
         clasesRelacionadas.push({ key: node.key, name: node.name });
         console.log(clasesRelacionadas);
-        await generarComponentesClases(node, componentsFolderPath, appRoutesPath);
+        await generarComponentesClases(node, componentsFolderPath, appRoutesPath, relacionesPorClase, clasesRelacionadas);
         await generarServiciosClases(node, servicesFolderPath, relacionesPorClase);
     });
 
@@ -1539,15 +1543,39 @@ mainMenuContent = mainMenuContent.replace(/proyectos:\s*any\[\]\s*=\s*\[[\s\S]*?
 fs.writeFileSync(mainMenuComponentTsPath, mainMenuContent, 'utf8');
 };
 
-generarComponentesClases = async (node, componentsFolderPath, appRoutesPath) => {
+generarComponentesClases = async (node, componentsFolderPath, appRoutesPath, relacionesPorClase, clasesRelacionadas) => {
     await executeCommand(`ng g c ${node.name}`, componentsFolderPath);
     const componentPath = path.join(componentsFolderPath, node.name);
     const componentHtmlPath = path.join(componentPath, `${node.name}.component.html`);
     const componentTsPath = path.join(componentPath, `${node.name}.component.ts`);
     const componentCssPath = path.join(componentPath, `${node.name}.component.css`);
+    const classProperties = node.properties || [];
+    const atributosJson = JSON.stringify(classProperties, null, 2);
 
     const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
     const className = capitalize(node.name) + 'Component';
+    const serviceName = capitalize(node.name) + 'Service';
+    
+
+    Object.keys(relacionesPorClase).forEach((fromKey) => {
+        if (relacionesPorClase[fromKey].includes(node.name)) {
+            // Buscar el nombre de la clase correspondiente a la clave (fromKey)
+            const fromClass = clasesRelacionadas.find((clase) => clase.key === parseInt(fromKey));
+            if (fromClass) {
+                const fromClassName = fromClass.name; // Obtener el nombre de la clase
+                classProperties.push({
+                    name: `${fromClassName}id`,
+                    type: 'number',
+                    visibility: '+',
+                });
+            }
+        }
+    });
+
+    // Generar la cadena de atributos en el formato esperado
+    const atributosString = generarAtributosString(classProperties);
+
+
     //Agregar a la ruta
     const  importComponent = `
     import { ${className} } from './components/${node.name.toLowerCase()}/${node.name.toLowerCase()}.component';
@@ -1564,7 +1592,660 @@ generarComponentesClases = async (node, componentsFolderPath, appRoutesPath) => 
     const insertIndex = routesContent.indexOf('];') - 1; //
     routesContent = routesContent.slice(0, insertIndex) + addRoute + routesContent.slice(insertIndex);
     fs.writeFileSync(appRoutesPath, routesContent, 'utf8');
+
+    const componentHtmlContent = `
+    <body>
+    <header>
+      <nav class="navbar">
+        <div class="navbar-left">
+          <select id="combo-box" (change)="onOptionChange($event)">
+            <option value="opcion1">GET ALL</option>
+            <option value="opcion2">GET ACTIVOS</option>
+            <option value="opcion3">GET BY ID</option>
+            <option value="opcion4">POST</option>
+            <option value="opcion5">PUT</option>
+            <option value="opcion6">DELETE</option>
+            @if (relacion==true) {
+
+                <option value="opcion7">GET WITH RELATIONS</option>
+                <option value="opcion8">GET ACTIVE WITH RELATIONS</option>
+                <option value="opcion9">GET WITH RELATIONS BY ID</option>
+
+            }
+            
+          </select>
+        </div>
+        <div class="navbar-right">
+          <button class="cancel-button" (click)="regresar()">Cancelar</button>
+          <button class="accept-button" (click)="enviarPeticion()">Aceptar</button>
+        </div>
+      </nav>
+    </header>
+
+    <div>
+        @if(selectedOption == "opcion1"){
+            <h1>Selecciona el boton de aceptar</h1>
+            <div class="mascota-list">
+                @if(data.length > 0){
+                    <table>
+                        <thead>
+                            <tr>
+                                <th *ngFor="let key of getKeys()">{{key}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of data">
+                                <td *ngFor="let key of getKeys()">{{item[key]}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }@else if (selectedOption == "opcion2") {
+            <h1>Selecciona el boton de aceptar</h1>
+            <div class="mascota-list">
+                @if(data.length > 0){
+                    <table>
+                        <thead>
+                            <tr>
+                                <th *ngFor="let key of getKeys()">{{key}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of data">
+                                <td *ngFor="let key of getKeys()">{{item[key]}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }@else if (selectedOption == "opcion3") {
+            <h1>Ingresa el id de {{componenteName}} y selecciona el boton de aceptar</h1>
+            <input type="number" [(ngModel)]="inputId" placeholder="Buscar por ID" class="input">
+            <div class="mascota-list">
+                <p *ngIf="mensajeError">{{ mensajeError }}</p>
+                @if(data.length > 0){
+                    <table>
+                        <thead>
+                            <tr>
+                                <th *ngFor="let key of getKeys()">{{key}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of data">
+                                <td *ngFor="let key of getKeys()">{{item[key]}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }@else if (selectedOption == "opcion7") {
+            <h1>Selecciona el boton de aceptar</h1>
+            <div class="mascota-list">
+                @if(data.length > 0){
+                    <table>
+                        <thead>
+                            <tr>
+                                <th *ngFor="let key of getKeys()">{{key}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of data">
+                                <td *ngFor="let key of getKeys()">
+                                    <ng-container *ngIf="isArray(item[key]); else normalCell">
+                                      <div *ngIf="item[key].length === 0">-</div>
+                                      <ul *ngIf="item[key].length > 0">
+                                        <li *ngFor="let subItem of item[key]">
+                                          {{ subItem | json }}
+                                        </li>
+                                      </ul>
+                                    </ng-container>
+                                    <ng-template #normalCell>
+                                      {{ item[key] }}
+                                    </ng-template>
+                                  </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }@else if (selectedOption == "opcion8") {
+            <h1>Selecciona el boton de aceptar</h1>
+            <div class="mascota-list">
+                @if(data.length > 0){
+                    <table>
+                        <thead>
+                            <tr>
+                                <th *ngFor="let key of getKeys()">{{key}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of data">
+                                <td *ngFor="let key of getKeys()">
+                                    <ng-container *ngIf="isArray(item[key]); else normalCell">
+                                      <div *ngIf="item[key].length === 0">-</div>
+                                      <ul *ngIf="item[key].length > 0">
+                                        <li *ngFor="let subItem of item[key]">
+                                          {{ subItem | json }}
+                                        </li>
+                                      </ul>
+                                    </ng-container>
+                                    <ng-template #normalCell>
+                                      {{ item[key] }}
+                                    </ng-template>
+                                  </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }@else if (selectedOption == "opcion9") {
+            <h1>Ingresa el id de {{componenteName}} y selecciona el boton de aceptar</h1>
+            <input type="number" [(ngModel)]="inputId" placeholder="Buscar por ID" class="input">
+            <div class="mascota-list">
+                <p *ngIf="mensajeError">{{ mensajeError }}</p>
+                @if(data.length > 0){
+                    <table>
+                        <thead>
+                            <tr>
+                                <th *ngFor="let key of getKeys()">{{key}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of data">
+                                <td *ngFor="let key of getKeys()">
+                                    <ng-container *ngIf="isArray(item[key]); else normalCell">
+                                      <div *ngIf="item[key].length === 0">-</div>
+                                      <ul *ngIf="item[key].length > 0">
+                                        <li *ngFor="let subItem of item[key]">
+                                          {{ subItem | json }}
+                                        </li>
+                                      </ul>
+                                    </ng-container>
+                                    <ng-template #normalCell>
+                                      {{ item[key] }}
+                                    </ng-template>
+                                  </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }@else if (selectedOption == "opcion4") {
+            <h1>Llena los datos de {{componenteName}} y selecciona el boton de aceptar</h1>
+            <form  #formulario="ngForm">
+                <div *ngFor="let atributo of atributos" class="mb-4">
+                  <label [for]="atributo.name" class="block font-semibold">
+                    {{ atributo.name }} (tipo: {{ atributo.type }})
+                  </label>
+                  <input
+                    [id]="atributo.name"
+                    [name]="atributo.name"
+                    [type]="atributo.type === 'number' ? 'number' : 'text'"
+                    [(ngModel)]="formData[atributo.name]"
+                    class="input2"
+                    required
+                  />
+                </div>
+              </form>
+        }@else if (selectedOption == "opcion5") {
+           <h1>Ingresa el id de {{componenteName}} y selecciona el boton de buscarId, modifica lo necesario y selecciona el boton de Aceptar</h1>
+            <input type="number" [(ngModel)]="inputId" placeholder="Buscar por ID" class="input">
+            <button (click)="buscarId()" class="btnID">Buscar ID</button>
+            <form  #formulario="ngForm">
+                <div *ngFor="let atributo of atributos" class="mb-4">
+                  <label [for]="atributo.name" class="block font-semibold">
+                    {{ atributo.name }} (tipo: {{ atributo.type }})
+                  </label>
+                  <input
+                    [id]="atributo.name"
+                    [name]="atributo.name"
+                    [type]="atributo.type === 'number' ? 'number' : 'text'"
+                    [(ngModel)]="formData[atributo.name]"
+                    class="input2"
+                    required
+                  />
+                </div>
+              </form>
+              <p *ngIf="mensajeError">{{ mensajeError }}</p>
+        }@else if (selectedOption == "opcion6") {
+            <h1>Ingresa el id de {{componenteName}} y selecciona el boton de aceptar</h1>
+            <input type="number" [(ngModel)]="inputId" placeholder="Buscar por ID" class="input">
+        }
+    </div>
+  </body>
+    `
+    fs.writeFileSync(componentHtmlPath, componentHtmlContent, 'utf8');
+
+    let componentTsContent = `
+    import { Component } from '@angular/core';
+import { ${serviceName} } from '../../services/${node.name.toLowerCase()}.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-${node.name.toLowerCase()}',
+  imports: [CommonModule, FormsModule],
+  templateUrl: './${node.name.toLowerCase()}.component.html',
+  styleUrl: './${node.name.toLowerCase()}.component.css'
+})
+export class ${className} {
+  relacion = false;
+  selectedOption = 'opcion1'; // Valor inicial
+  data: any[] = [];
+  componenteName = '${node.name}';
+  inputId: number |null = null;
+  mensajeError: string |null = null;
+  mostrarIsActive: boolean = true; // por defecto sí se muestra
+atributos: { name: string; type: string; visibility: string }[] = [
+        ${atributosString}
+      ];
+      formData: { [key: string]: any } = {}; // Aquí se guarda lo que se escribe
+  // Cambiar si existe la relación
+  constructor(private ${node.name.toLowerCase()}Service: ${serviceName}, private router: Router){}
+
+  onOptionChange(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    this.selectedOption = selectElement.value;
+    this.data = []; // Limpiar los datos al cambiar la opción
+    this.inputId = null; // Limpiar el inputId al cambiar la opción
+    this.mensajeError = ''; // Limpiar el mensaje de error al cambiar la opción
+  }
+
+  enviarPeticion(){
+    if(this.selectedOption === 'opcion1') {
+      this.${node.name.toLowerCase()}Service.getAll().subscribe((response) => {
+        console.log(response);
+        this.data = response;
+        this.mostrarIsActive = true;
+      });
+    } else if(this.selectedOption === 'opcion2') {
+      this.${node.name.toLowerCase()}Service.getActivos().subscribe((response) => {
+        console.log(response);
+        this.data = response;
+        this.mostrarIsActive = false;
+      });
+    } else if(this.selectedOption === 'opcion3') {
+      if(this.inputId !== null) {
+        this.${node.name.toLowerCase()}Service.getById(this.inputId).subscribe((response) => {
+          console.log(response);
+          if (response == null) {
+            this.data = []; // Limpiar los datos si no se encuentra la mascota
+            this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+          }else {
+          this.data = [response]; // Asegúrate de que la respuesta sea un objeto y no un array
+          this.mensajeError = null; // Limpiar el mensaje de error si se encuentra la mascota
+          this.mostrarIsActive = true;
+          }
+        }, (error: any) => {
+          this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+          console.error('Error:', error);
+        }
+      );
+      }
+    } else if(this.selectedOption === 'opcion4') {
+     this.mapFormDataToTypes();
+      this.${node.name.toLowerCase()}Service.post(this.formData).subscribe((response) => {
+        console.log(response);
+        this.data = [response]; // Asegúrate de que la respuesta sea un objeto y no un array
+        this.mensajeError = null; // Limpiar el mensaje de error si se encuentra la mascota
+        alert('${node.name.toLowerCase()} creada correctamente'); // Mensaje de éxito
+        this.formData = {}; // Limpiar el formulario después de crear la mascota
+      }, (error: any) => {
+        this.mensajeError = 'Error al crear la ${node.name.toLowerCase()}.';
+        console.error('Error:', error);
+      });
+    } else if(this.selectedOption === 'opcion5') {
+     this.mapFormDataToTypes();
+      if(this.inputId === null) {
+        this.mensajeError = 'Por favor, ingrese un ID válido.';
+        return;
+      }
+      this.${node.name.toLowerCase()}Service.put(this.inputId, this.formData).subscribe((response) => {
+        console.log(response);
+        if (response == null) {
+          this.data = []; // Limpiar los datos si no se encuentra la mascota
+          this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+        }else {
+        this.data = [response]; // Asegúrate de que la respuesta sea un objeto y no un array
+        this.mensajeError = null; // Limpiar el mensaje de error si se encuentra la mascota
+        alert('${node.name.toLowerCase()} actualizada correctamente'); // Mensaje de éxito
+        this.inputId = null; // Limpiar el inputId después de actualizar la mascota
+        }
+      }, (error: any) => {
+        this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+        console.error('Error:', error);
+      });
+    } else if(this.selectedOption === 'opcion6') {
+      if(this.inputId !== null) {
+        this.${node.name.toLowerCase()}Service.delete(this.inputId).subscribe((response) => {
+          console.log(response);
+          if (response == null) {
+            this.data = []; // Limpiar los datos si no se encuentra la mascota
+            this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+          }else {
+          this.data = [response]; // Asegúrate de que la respuesta sea un objeto y no un array
+          this.mensajeError = null; // Limpiar el mensaje de error si se encuentra la mascota
+          alert('${node.name.toLowerCase()} eliminada correctamente'); // Mensaje de éxito
+          this.inputId = null; // Limpiar el inputId después de eliminar la mascota
+          }
+        }, (error: any) => {
+          this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+          console.error('Error:', error);
+        });
+      }
+    } 
+    // Meter aquí relaciones si existen
+  }
+  getKeys(): string[] {
+    if (this.data.length === 0) return [];
+  return Object.keys(this.data[0]).filter(key => {
+    if (!this.mostrarIsActive && key === 'isActive') return false;
+    return true;
+  });
+  }
+  buscarId() {
+    if (this.inputId !== null) {
+      this.${node.name.toLowerCase()}Service.getById(this.inputId).subscribe((response) => {
+        console.log(response);
+        if (response == null) {
+          this.data = []; // Limpiar los datos si no se encuentra la ${node.name.toLowerCase()}
+          this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+        }else {
+        this.data = [response]; // Asegúrate de que la respuesta sea un objeto y no un array
+        this.mensajeError = null; // Limpiar el mensaje de error si se encuentra la mascota
+        this.formData = {...response}
+        }
+      }, (error: any) => {
+        this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+        console.error('Error:', error);
+      });
+    }
+  }
+  isArray(value: any): boolean {
+    return Array.isArray(value);
+  }
+regresar(){
+    this.router.navigate(['/mainMenu']);
+  }
+    private mapFormDataToTypes(): void {
+    this.atributos.forEach((atributo) => {
+      const value = this.formData[atributo.name];
+      if (value !== undefined && value !== null) {
+        if (atributo.type === 'number') {
+          this.formData[atributo.name] = Number(value); // Convertir a número
+        } else if (atributo.type === 'string') {
+          this.formData[atributo.name] = String(value); // Asegurarse de que sea string
+        }
+        // Puedes agregar más tipos si es necesario
+      }
+    });
+  }
 }
+
+    `
+
+
+    if (relacionesPorClase[node.key] && relacionesPorClase[node.key].length > 0) {
+        const relacionesBlock = `
+        else if(this.selectedOption === 'opcion7') {
+      this.${node.name.toLowerCase()}Service.getWithRelations().subscribe((response) => {
+        console.log(response);
+        this.data = response;
+        this.mostrarIsActive = true;
+      });
+    } else if(this.selectedOption === 'opcion8') {
+      this.${node.name.toLowerCase()}Service.getActivosWithRelations().subscribe((response) => {
+        console.log(response);
+        this.data = response;
+        this.mostrarIsActive = false;
+      });
+    } else if(this.selectedOption === 'opcion9') {
+      if(this.inputId !== null) {
+        this.${node.name.toLowerCase()}Service.getByIdWithRelations(this.inputId).subscribe((response) => {
+          console.log(response);
+          if (response == null) {
+            this.data = []; // Limpiar los datos si no se encuentra la mascota
+            this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+          }else {
+          this.data = [response]; // Asegúrate de que la respuesta sea un objeto y no un array
+          this.mensajeError = null; // Limpiar el mensaje de error si se encuentra la mascota
+          this.mostrarIsActive = true;
+          }
+        }, (error: any) => {
+          this.mensajeError = 'No se encontró la ${node.name.toLowerCase()} con el ID proporcionado.';
+          console.error('Error:', error);
+        });
+}}
+        `
+        componentTsContent = componentTsContent.replace('// Meter aquí relaciones si existen' , relacionesBlock);
+        const opcionesBlock = `
+        relacion = true;
+        `
+        componentTsContent = componentTsContent.replace('relacion = false;', opcionesBlock);
+
+        
+    }
+    
+
+fs.writeFileSync(componentTsPath, componentTsContent, 'utf8');
+
+
+    const componentCssContent = `
+    * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+header {
+  width: 100vw; 
+  background-color: #2563eb;
+  box-shadow: 20px 2px 30px rgba(0, 0, 0, 0.1);
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  width: 100%;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+}
+.navbar-left select {
+  padding: 8px;
+  font-size: 16px;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+#combo-box {
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.cancel-button,
+.accept-button {
+  padding: 10px 20px;
+  margin-left: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  background-color: #ffffff;
+  color: rgb(0, 0, 0);
+  border-radius: 10px;
+  transition: background-color 0.3s;
+}
+
+.cancel-button:hover,
+.accept-button:hover {
+  background-color: #bebebe;
+}
+
+.input {
+
+margin: 20px 27px;
+width: 100%;
+max-width: 220px;
+height: 45px;
+padding: 12px;
+border-radius: 12px;
+border: 1.5px solid lightgrey;
+outline: none;
+transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+box-shadow: 0px 0px 20px -18px;
+}
+
+.input:hover {
+border: 2px solid lightgrey;
+box-shadow: 0px 0px 20px -17px;
+}
+
+.input:active {
+transform: scale(0.95);
+}
+
+.input:focus {
+border: 2px solid grey;
+}
+
+
+.input-group {
+  margin-bottom: 20px;
+  display: none; /* Todos ocultos al inicio */
+}
+
+.input-group label {
+  display: block;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  box-sizing: border-box;
+}
+
+.mascota-list {
+  width: 95%;
+  margin: 30px auto;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+thead {
+  background-color: #2563eb;
+  color: white;
+}
+
+thead th {
+  padding: 15px;
+  text-align: left;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+tbody td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+p {
+  color: red;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 20px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  margin: 20px 27px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.btnID{
+
+  margin: 20px 27px;
+width: 100%;
+max-width: 100px;
+height: 45px;
+padding: 12px;
+border-radius: 12px;
+border: 1.5px solid lightgrey;
+outline: none;
+transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+box-shadow: 0px 0px 20px -18px;
+cursor: pointer;
+
+}
+
+.btnID:hover {
+  border: 2px solid rgb(146, 146, 146);
+  box-shadow: 0px 0px 20px -17px;
+}
+
+.input2 {
+
+width: 100%;
+max-width: 150px;
+height: 25px;
+padding: 12px;
+border-radius: 8px;
+border: 1.5px solid lightgrey;
+outline: none;
+transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+box-shadow: 0px 0px 20px -18px;
+
+}
+
+.lbl {
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 20px 27px;
+
+}
+    `
+    fs.writeFileSync(componentCssPath, componentCssContent, 'utf8');
+    console.log(`Componente generado correctamente: ${componentPath}`);
+
+}
+
+const generarAtributosString = (classProperties) => {
+    return classProperties
+        .map(
+            (prop) =>
+                `{
+      name: '${prop.name}',
+      type: '${prop.type}',
+      visibility: '${prop.visibility}'
+    }`
+        )
+        .join(',\n');
+};
 
 generarServiciosClases = async (node, servicesFolderPath, relacionesPorClase) => {
     await executeCommand(`ng g s ${node.name}`, servicesFolderPath);
