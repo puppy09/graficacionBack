@@ -892,6 +892,7 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
   imports: [CommonModule,ReactiveFormsModule,FormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -1079,6 +1080,7 @@ import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-register',
+  standalone: true,
   imports: [CommonModule,ReactiveFormsModule,FormsModule],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css'
@@ -1269,6 +1271,7 @@ import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-main-menu',
+  standalone: true,
   imports: [CommonModule],
   templateUrl: './main-menu.component.html',
   styleUrl: './main-menu.component.css'
@@ -1826,6 +1829,7 @@ import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-${node.name.toLowerCase()}',
+  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './${node.name.toLowerCase()}.component.html',
   styleUrl: './${node.name.toLowerCase()}.component.css'
@@ -1851,6 +1855,7 @@ atributos: { name: string; type: string; visibility: string }[] = [
     this.data = []; // Limpiar los datos al cambiar la opción
     this.inputId = null; // Limpiar el inputId al cambiar la opción
     this.mensajeError = ''; // Limpiar el mensaje de error al cambiar la opción
+    this.formData = {};
   }
 
   enviarPeticion(){
