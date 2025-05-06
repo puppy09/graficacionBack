@@ -16,7 +16,9 @@ const executeCommand = (command, cwd) => {
     });
 };
 
+
 const createProject = async (nombreProyecto, graphModel, credenciales, paquetesGraph) => {
+
     const desktopPath = path.join(require('os').homedir(), 'Desktop');
     const projectFolderPath = path.join(desktopPath, nombreProyecto);
     const frontendPath = path.join(projectFolderPath, `${nombreProyecto}-frontend`);
