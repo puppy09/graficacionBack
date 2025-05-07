@@ -16,7 +16,9 @@ const executeCommand = (command, cwd) => {
     });
 };
 
-    const createProject = async (nombreProyecto, graphModel, credenciales) => {
+
+const createProject = async (nombreProyecto, graphModel, credenciales, paquetesGraph) => {
+
     const desktopPath = path.join(require('os').homedir(), 'Desktop');
     const projectFolderPath = path.join(desktopPath, nombreProyecto);
     const frontendPath = path.join(projectFolderPath, `${nombreProyecto}-frontend`);
@@ -144,14 +146,17 @@ app.use(cors({ credentials: true, origin: true }));
         console.log('Proyecto creado correctamente');
 
         processGraphModel(graphModel, modelsPath, routesPath, controllersPath, middlewaresPath);
+        diagramaPaquetesBackend(backendPath, paquetesGraph);
         // Crear proyecto frontend
         console.log('Creando proyecto frontend en angular...');
         await executeCommand(`npx -y @angular/cli new ${nombreProyecto}-frontend --defaults`, projectFolderPath);
         crearArchivosFrontend(frontendPath, graphModel);
         console.log('Proyecto frontend creado correctamente');
         console.log('Todo al cien papi');
+        diagramaPaquetesFrontend(frontendPath, paquetesGraph);
     }
 };
+
 
 
 const processGraphModel = (graphModel, modelsPath, routesPath, controllersPath, middlewaresPath) => {
@@ -208,6 +213,7 @@ const processGraphModel = (graphModel, modelsPath, routesPath, controllersPath, 
     });
 
     generarArchivosLogin(modelsPath, routesPath, controllersPath, middlewaresPath);
+
 };
 
 const generarArchivoClase = (node, modelsPath, routesPath, controllersPath) => {
@@ -892,6 +898,7 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
   imports: [CommonModule,ReactiveFormsModule,FormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -1079,6 +1086,7 @@ import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-register',
+  standalone: true,
   imports: [CommonModule,ReactiveFormsModule,FormsModule],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css'
@@ -1269,6 +1277,7 @@ import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-main-menu',
+  standalone: true,
   imports: [CommonModule],
   templateUrl: './main-menu.component.html',
   styleUrl: './main-menu.component.css'
@@ -1826,6 +1835,7 @@ import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-${node.name.toLowerCase()}',
+  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './${node.name.toLowerCase()}.component.html',
   styleUrl: './${node.name.toLowerCase()}.component.css'
@@ -1851,6 +1861,7 @@ atributos: { name: string; type: string; visibility: string }[] = [
     this.data = []; // Limpiar los datos al cambiar la opción
     this.inputId = null; // Limpiar el inputId al cambiar la opción
     this.mensajeError = ''; // Limpiar el mensaje de error al cambiar la opción
+    this.formData = {};
   }
 
   enviarPeticion(){
@@ -2320,6 +2331,108 @@ generarServiciosClases = async (node, servicesFolderPath, relacionesPorClase) =>
 
     fs.writeFileSync(servicePath, serviceContent.trim(), 'utf8');
     console.log(`Servicio generado correctamente: ${servicePath}`);
+};
+
+//Diagrama de paquetes
+
+const diagramaPaquetesBackend = (backendPath, paquetesGraph) => {
+    const nodes = paquetesGraph.nodeDataArray;
+
+    // Mapa para acceder rápido por key
+    const nodeMap = new Map();
+    nodes.forEach(node => nodeMap.set(node.key, node));
+
+    // Mapa que guarda los hijos de cada grupo
+    const childrenMap = new Map();
+    nodes.forEach(node => {
+        const parent = node.group;
+        if (parent !== undefined) {
+            if (!childrenMap.has(parent)) {
+                childrenMap.set(parent, []);
+            }
+            childrenMap.get(parent).push(node);
+        }
+    });
+
+    // Función recursiva para crear estructura
+    const crearEstructura = (key, currentPath) => {
+        const node = nodeMap.get(key);
+        const nombreCarpeta = `${node.text}_${key}`; // Para evitar duplicados con mismo texto
+        const newPath = path.join(currentPath, nombreCarpeta);
+
+        // Solo crea carpeta si es un grupo
+        if (node.isGroup) {
+            if (!fs.existsSync(newPath)) {
+                fs.mkdirSync(newPath);
+            }
+
+            const hijos = childrenMap.get(key) || [];
+            hijos.forEach(hijo => {
+                crearEstructura(hijo.key, newPath);
+            });
+        }else {
+            const archivoPath = path.join(currentPath, `${node.text}_${key}.txt`);
+            fs.writeFileSync(archivoPath, `Contenido de ${node.text}`);
+        }
+    };
+
+    // Comenzar desde los nodos raíz (sin group)
+    nodes.forEach(node => {
+        if (node.group === undefined) {
+            crearEstructura(node.key, backendPath);
+        }
+    });
+};
+
+const diagramaPaquetesFrontend = (frontendPath, paquetesGraph) => {
+    srcPath = path.join(frontendPath, 'src');
+    appPath = path.join(srcPath, 'app');
+    const nodes = paquetesGraph.nodeDataArray;
+
+    // Mapa para acceder rápido por key
+    const nodeMap = new Map();
+    nodes.forEach(node => nodeMap.set(node.key, node));
+
+    // Mapa que guarda los hijos de cada grupo
+    const childrenMap = new Map();
+    nodes.forEach(node => {
+        const parent = node.group;
+        if (parent !== undefined) {
+            if (!childrenMap.has(parent)) {
+                childrenMap.set(parent, []);
+            }
+            childrenMap.get(parent).push(node);
+        }
+    });
+
+    // Función recursiva para crear estructura
+    const crearEstructura = (key, currentPath) => {
+        const node = nodeMap.get(key);
+        const nombreCarpeta = `${node.text}_${key}`; // Para evitar duplicados con mismo texto
+        const newPath = path.join(currentPath, nombreCarpeta);
+
+        // Solo crea carpeta si es un grupo
+        if (node.isGroup) {
+            if (!fs.existsSync(newPath)) {
+                fs.mkdirSync(newPath);
+            }
+
+            const hijos = childrenMap.get(key) || [];
+            hijos.forEach(hijo => {
+                crearEstructura(hijo.key, newPath);
+            });
+        }else {
+            const archivoPath = path.join(currentPath, `${node.text}_${key}.txt`);
+            fs.writeFileSync(archivoPath, `Contenido de ${node.text}`);
+        }
+    };
+
+    // Comenzar desde los nodos raíz (sin group)
+    nodes.forEach(node => {
+        if (node.group === undefined) {
+            crearEstructura(node.key, appPath);
+        }
+    });
 };
 
 module.exports = {
