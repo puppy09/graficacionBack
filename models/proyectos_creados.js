@@ -31,6 +31,19 @@ ProyectosCreados.init({
     dia_componentes:{
         type: DataTypes.INTEGER,
         allowNull: false
+    },
+    bdd_host:{
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    bdd_user:{
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    bdd_contra:{
+
+        type:DataTypes.STRING,
+        allowNull: true
     }
 },{
     sequelize,
