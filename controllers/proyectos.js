@@ -36,4 +36,16 @@ const updatedProyecto = async(req, res)=>{
         return res.status(500).json({message:' Error creando proyecto'});
     }
 }
-module.exports = {crearProyecto, getProyectos, updatedProyecto};
+
+const getNombreProyecto = async(req, res)=>{
+    try{
+        const {id_proyecto}=req.params;
+        const proyectoParsed = parseInt(id_proyecto);
+        const proyecto = await Proyectos.findByPk(proyectoParsed);
+        return res.status(200).json(proyecto);
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({message:' Error obteniendo proyecto'});
+    }
+}
+module.exports = {crearProyecto, getProyectos, updatedProyecto, getNombreProyecto};

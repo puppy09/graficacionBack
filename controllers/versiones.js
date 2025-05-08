@@ -82,5 +82,22 @@ const getAllVersiones = async(req, res)=>{
     }
 }
 
+const getJson = async(req, res)=>{
+    try{
 
-module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones}
+        const {version} = req.params;
+        versionParsed = parseInt(version);
+        console.log("version",version);
+        const versionFind = await Versiones.findByPk(version,{
+            attributes:['json']
+        })
+        return res.status(200).json(versionFind);
+
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({message:'No se pudo obtener el json'})
+    }
+}
+
+
+module.exports = {crearVersion, updatedVersion, getVersion, getSingleVersion, getAllVersiones, getJson}
