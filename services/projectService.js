@@ -4,7 +4,7 @@ const {exec} = require('child_process');
 
 const executeCommand = (command, cwd) => {
     return new Promise((resolve, reject) => {
-        exec(command, {cwd}, (error, stdout, stderr) => {
+        exec(command, {cwd, shell: 'powershell.exe'}, (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec ejecutando: ${command}\n${stderr}`);
                 reject(error);
@@ -44,6 +44,7 @@ const createProject = async (nombreProyecto, graphModel, credenciales, paquetesG
         console.log('Creando proyecto backend en express...');
         await executeCommand(`npx express-generator ${nombreProyecto}-backend --no-view`, projectFolderPath);
         console.log('instalando las dependencias del backend...');
+        await executeCommand('node -v', backendPath);
         await executeCommand('npm install', backendPath);
         //Instalar sequelize
         console.log('instalando sequelize...');
