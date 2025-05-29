@@ -1556,6 +1556,7 @@ fs.writeFileSync(mainMenuComponentTsPath, mainMenuContent, 'utf8');
 generarComponentesClases = async (node, componentsFolderPath, appRoutesPath, relacionesPorClase, clasesRelacionadas) => {
     await executeCommand(`ng g c ${node.name}`, componentsFolderPath);
     const componentPath = path.join(componentsFolderPath, node.name);
+    fs.mkdirSync(componentPath, { recursive: true });
     const componentHtmlPath = path.join(componentPath, `${node.name}.component.html`);
     const componentTsPath = path.join(componentPath, `${node.name}.component.ts`);
     const componentCssPath = path.join(componentPath, `${node.name}.component.css`);
